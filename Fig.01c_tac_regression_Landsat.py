@@ -14,7 +14,6 @@ current_dir = os.path.dirname(os.getcwd()).replace('\\','/')
 relative_path = '/2_Output/tac_landsat_city_3zones_all.npz'
 relative_path2 = '/2_Output/tac_nadir_city_3zones_all.npz'
 
-
 # Calculate means and remove NaN values
 TACs_mean = np.load(current_dir+relative_path)['array1']
 

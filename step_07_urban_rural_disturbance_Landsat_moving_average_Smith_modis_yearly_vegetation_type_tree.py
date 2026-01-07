@@ -189,7 +189,7 @@ if __name__ == '__main__':
             extreme_events_out_month = np.repeat(extreme_events_out,12,axis=1)
 
             # Save
-            suffix = f"{id}_smith_{n_sd}sd.npy"
+            suffix = f"{id}_smith_{n_sd}sd_tree.npy"
 
             np.save(f"{output_folder}dVI_{suffix}", dVI_out)
             np.save(f"{output_folder}extreme_events_{suffix}", extreme_events_out_month)
@@ -218,7 +218,6 @@ if __name__ == '__main__':
             urban_label[~np.isnan(rural_near)] = 1
             urban_label[~np.isnan(urban_1990)] = 2
             urban_label2 = urban_label[~mask]
-            output_file_urbanlabel = current_dir + '/2_Output/Modis_recovery_resistance/' + 'urban_label_' + str(
-                id) + '_.npy'
+            output_file_urbanlabel = current_dir + '/2_Output/Modis_recovery_resistance/' + 'urban_label_' + str(id) + '_tree.npy'
 
             np.save(output_file_urbanlabel, urban_label2)

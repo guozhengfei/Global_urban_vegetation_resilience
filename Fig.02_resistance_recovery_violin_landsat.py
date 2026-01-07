@@ -88,7 +88,7 @@ IDs = np.sort(IDs)
 
 recovery_stats = []  # List to store recovery statistics
 IDs_num = []
-sd_names = ['2']
+sd_names = ['2.5']
 for sd_name in sd_names:
     for id in IDs[1:]:
 
@@ -170,7 +170,12 @@ tac_rb = df_merge['rural_bgr']
 
 dt_vi_uc = df_merge['dt_vi_inner']
 dt_vi_rb = df_merge['dt_vi_rural']
+plt.figure(); plt.plot(tac_uc-tac_rb,dt_vi_uc-dt_vi_rb,'o')
+import scipy.stats as st
+mask = np.isnan(tac_uc-tac_rb-dt_vi_uc-dt_vi_rb)
+st.linregress(tac_uc[~mask]-tac_rb[~mask],dt_vi_uc[~mask]-dt_vi_rb[~mask])
 
+sum(tac_uc-tac_rb>0)
 
 # x_fit10 = np.array([dt_vi_uc.min(), dt_vi_uc.max()])
 x_fit10 = x_fit12 = np.array([dt_vi_rb.min(), dt_vi_rb.max()])
@@ -195,11 +200,8 @@ plt.savefig(os.path.join(current_dir, '4_Figures', 'recovery_resistance_TAC.png'
 plt.show()
 
 # # Perform statistical test
-# print("T-test results (inner vs rural recovery):")
-# print(st.ttest_rel(recovery_df['rural_rt'], recovery_df['sub_rt']))
-# print(st.ttest_rel(recovery_df['inner_rt'], recovery_df['sub_rt']))
-# print(st.ttest_rel(recovery_df['inner_rt'], recovery_df['rural_rt']))
-#
-# print(st.ttest_rel(recovery_df['rural_recovery'], recovery_df['sub_recovery']))
-# print(st.ttest_rel(recovery_df['inner_recovery'], recovery_df['sub_recovery']))
-# print(st.ttest_rel(recovery_df['inner_recovery'], recovery_df['rural_recovery']))
+import scipy.stats as st
+print("T-test results (inner vs rural recovery):")
+
+print(st.ttest_rel(dt_vi_uc, dt_vi_rb))
+print(st.ttest_rel(tac_uc[~mask], tac_rb[~mask]))

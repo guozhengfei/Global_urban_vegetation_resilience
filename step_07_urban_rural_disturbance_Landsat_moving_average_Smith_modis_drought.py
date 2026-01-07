@@ -88,6 +88,7 @@ if __name__ == '__main__':
     urban_folder_2018 = current_dir + '/1_Input/urban/urban_2018_1000m/'
     urban_folder_1990 = current_dir + '/1_Input/urban/urban_1990_250m/'
     filenames = os.listdir(current_dir + '/1_Input/ta_anom/')
+    SPEI = pd.read_csv(os.path.join('..', '..', 'urban_env_data', 'spei_csv_urban_751.csv')).iloc[:,1+12:]
 
     output_folder = current_dir + '/2_Output/Modis_recovery_resistance/'
 
@@ -100,8 +101,7 @@ if __name__ == '__main__':
     IDs = np.sort(IDs)
 
     even_nums = []
-    BOUNDARY_SD = 0.5  # Start/End definition
-    CORE_SD_LEVELS = [1, 1.5, 2, 2.5]  # Disturbance intensity levels
+    CORE_SD_LEVELS = [2]  # Disturbance intensity levels
     for id in IDs[1:]:
         EVI0 = tf.imread(EVI_folder + 'nadir_ndvi_15d_' + str(id) + '.tif')[:, :, :264 * 2][:, :, ::2]
         nan_frac = np.sum(np.isnan(EVI0), axis=2) / EVI0.shape[2]
@@ -114,13 +114,15 @@ if __name__ == '__main__':
         water_frc = tf.imread(water_folder + 'waterC_' + str(id) + '.tif')
         water_frc = cv2.resize(water_frc, (EVI0.shape[1], EVI0.shape[0]), cv2.INTER_LINEAR)
         urbanExp_frc = tf.imread(urbanExp_folder + 'urban_exp_C_' + str(id) + '.tif')
+        spei = SPEI.loc[SPEI['ID']==id,:].values[0,:-4]
 
         # remove the pixel with crop > 20% or urban expansion or miss data >30%
         crop_frc[crop_frc > 0.2] = np.nan
         veg_nature = grass_frc + tree_frc
         crop_frc[crop_frc > veg_nature] = np.nan
-        crop_frc[tree_frc < grass_frc] = np.nan
-        crop_frc[tree_frc < 0.3] = np.nan
+        # crop_frc[veg_nature < 0.8] = np.nan
+        # crop_frc[tree_frc < grass_frc] = np.nan
+        # crop_frc[tree_frc < 0.3] = np.nan
         mask_miss = np.sum(np.isnan(EVI0), axis=2) / EVI0.shape[2]
         mask = np.isnan(crop_frc) | (mask_miss > 0.3) | (water_frc > 0.3) | (urbanExp_frc > 0.2)
         crop_mask_1d = mask.flatten()
@@ -142,9 +144,15 @@ if __name__ == '__main__':
         vi_seasonal = np.nanmedian(np.nanmedian(vis_monthly, axis=1), axis=0)
         vi_threshold = min(np.nanpercentile(vi_seasonal, 20), 0.2)
         gs_mask = (vi_seasonal > vi_threshold)
+
+        peak_gs = np.where(vi_seasonal==np.nanmax(vi_seasonal))[0][0]
+
         vis_monthly[:,:,~gs_mask]=np.nan
         vis_yearly = np.nanmean(vis_monthly,axis=2)
 
+        spei_monthly = spei.reshape(YR_NUM, BANDS_YEAR)
+
+        spei_yearly = np.nanmean(spei_monthly[:,[peak_gs,np.mod(peak_gs+3,12)]],axis=1)
         # --- De-trend (Rolling Mean) ---
 
         df_deseas = pd.DataFrame(vis_yearly.T)
@@ -170,26 +178,23 @@ if __name__ == '__main__':
         # --- Loop through n = 1, 2, 3 ---
         for n_sd in CORE_SD_LEVELS:
             # Define Thresholds
-
-            core_thresholds = mean_all - (n_sd * std_all)
-            core_thresholds_2d = np.tile(core_thresholds,(YR_NUM,1)).T
-
+            drought_threshold = np.nanpercentile(spei_yearly,n_sd*4.5)
             # Output Arrays
             dVI_out = gsm_arr+np.nan
             extreme_events_out = np.zeros((n_pixels, n_times), dtype=bool)
 
-            disturbance_label = residuals<core_thresholds_2d
-            dVI_out[disturbance_label] = residuals[disturbance_label]/vis_mean_pixel[disturbance_label]
-            dVI_out = np.nanmin(dVI_out,axis=1)
+            disturbance_label = spei_yearly<drought_threshold
+            dVI_out[:,disturbance_label] = residuals[:,disturbance_label]/vis_mean_pixel[:,disturbance_label]
+            dVI_out = np.nanmean(dVI_out,axis=1)
 
             # Calculate average events
             total_events = np.sum(disturbance_label)
-            avg_events = total_events / n_pixels
-            extreme_events_out[disturbance_label]=True
+            avg_events = total_events# / n_pixels
+            extreme_events_out[:,disturbance_label]=True
             extreme_events_out_month = np.repeat(extreme_events_out,12,axis=1)
 
             # Save
-            suffix = f"{id}_smith_{n_sd}sd.npy"
+            suffix = f"{id}_smith_{n_sd}sd_drought.npy"
 
             np.save(f"{output_folder}dVI_{suffix}", dVI_out)
             np.save(f"{output_folder}extreme_events_{suffix}", extreme_events_out_month)
@@ -197,28 +202,28 @@ if __name__ == '__main__':
             print(
                 f"  {id} -> n={n_sd}SD: {np.sum(~np.isnan(dVI_out))} pixels affected. Avg events/pixel: {avg_events:.4f}")
 
-
             urban_2018 = tf.imread(urban_folder_2018 + 'fvc_' + str(id) + '.tif').astype(float)
-            urban_2018_rsz = cv2.resize(urban_2018, (EVI0.shape[1], EVI0.shape[0]),cv2.INTER_NEAREST)
+            urban_2018_rsz = cv2.resize(urban_2018, (EVI0.shape[1], EVI0.shape[0]), cv2.INTER_NEAREST)
             urban_2018_rsz[urban_2018_rsz != float(id)] = np.nan
             urban_1990 = tf.imread(urban_folder_1990 + 'urban_1990_' + str(id) + '.tif').astype(float)
-            urban_1990= cv2.resize(urban_1990, (EVI0.shape[1], EVI0.shape[0]),cv2.INTER_NEAREST)
+            urban_1990 = cv2.resize(urban_1990, (EVI0.shape[1], EVI0.shape[0]), cv2.INTER_NEAREST)
             urban_1990[urban_1990 == 0] = np.nan
 
             rural_near = urban_2018_rsz * 1  # rural-urban interface
-            for i in range(3*2):
+            for i in range(3 * 2):
                 rural_near = extend_edge(rural_near)
 
             rural_bgr = rural_near * 1  # rural background
-            for i in range(10*2):
+            for i in range(10 * 2):
                 rural_bgr = extend_edge(rural_bgr)
 
-            urban_label = urban_1990+np.nan
-            urban_label[~np.isnan(rural_bgr)]=0
+            urban_label = urban_1990 + np.nan
+            urban_label[~np.isnan(rural_bgr)] = 0
             urban_label[~np.isnan(rural_near)] = 1
             urban_label[~np.isnan(urban_1990)] = 2
             urban_label2 = urban_label[~mask]
             output_file_urbanlabel = current_dir + '/2_Output/Modis_recovery_resistance/' + 'urban_label_' + str(
-                id) + '_.npy'
+                id) + '_drought.npy'
 
             np.save(output_file_urbanlabel, urban_label2)
+

@@ -38,7 +38,7 @@ cities = gpd.read_file(current_dir + '/1_Input/shps/Shp/points_citis.shp')
 cities = pd.merge(cities, df_tac, on='ID')
 cities = pd.merge(cities, climate, on='ID')
 
-fig, ax = plt.subplots(1, 3, figsize=(10.5*0.8, 2.9*0.8), gridspec_kw={'width_ratios': [2, 0.5, 1]})
+fig, ax = plt.subplots(1, 3, figsize=(11 * 0.72, 4 * 0.65), gridspec_kw={'width_ratios': [2, 1, 1]})
 
 # Plot world coastline using land boundaries
 coastline.boundary.plot(ax=ax[0], color='k', linewidth=0.5, zorder=10)

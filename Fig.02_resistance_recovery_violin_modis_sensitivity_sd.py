@@ -31,15 +31,6 @@ urban_folder = current_dir + '/2_Output/Modis_recovery_resistance/'
 folder = current_dir + '/2_Output/VI_Landsat/'
 filenames = os.listdir(urban_folder)
 
-# load Landsat TAC
-relative_path = '/2_Output/tac_nadir_city_3zones_modis_no_disturbance.npz'
-TACs = np.load(current_dir+relative_path)['array1'] # v5,v4.2
-TACs[TACs<0]=np.nan
-TACs_mean = TACs
-ID = np.load(current_dir+relative_path)['array2'] # v5,v4.2
-df_tac0 = pd.DataFrame(TACs_mean)
-df_tac0.columns=['urban_core','urban_edge','rural_bgr']
-df_tac0['ID'] = ID
 
 IDs = []
 for name in filenames:
@@ -49,10 +40,19 @@ for name in filenames:
 
 IDs = np.sort(IDs)
 
-recovery_stats = []  # List to store recovery statistics
 IDs_num = []
 sd_names = ['1','3']
 for sd_name in sd_names:
+    relative_path = '/2_Output/tac_nadir_city_3zones_modis_no_disturbance_'+sd_name+'sd.npz'
+    TACs = np.load(current_dir + relative_path)['array1']  # v5,v4.2
+    TACs[TACs < 0] = np.nan
+    TACs_mean = TACs
+    ID = np.load(current_dir + relative_path)['array2']  # v5,v4.2
+    df_tac0 = pd.DataFrame(TACs_mean)
+    df_tac0.columns = ['urban_core', 'urban_edge', 'rural_bgr']
+    df_tac0['ID'] = ID
+    recovery_stats = []  # List to store recovery statistics
+
     for id in IDs[2:]:
         # if id in[539.0,606.0]: continue
 
@@ -102,7 +102,15 @@ for sd_name in sd_names:
     ax1.set_ylabel('Resistance (kNDVI loss)')
     ax1.set_ylim(resistance_data[1].min()-0.002, resistance_data[-1].max() * 1.15)
     # Add labels on top of each violin bar
-    ax1.text(1.5, ax1.get_ylim()[1] * 0.95, 'p>0.05', ha='center', va='top', fontsize=8, fontweight='bold')
+    import scipy.stats as st
+
+    # print("T-test results (inner vs rural recovery):")
+    print(st.ttest_rel(df_tac['dt_vi_inner'], df_tac['dt_vi_rural']))
+    # print(st.ttest_rel(tac_uc[~mask], tac_rb[~mask]))
+    if st.ttest_rel(df_tac['dt_vi_inner'], df_tac['dt_vi_rural']).pvalue >0.05:
+        ax1.text(1.5, ax1.get_ylim()[1] * 0.95, 'p>0.05', ha='center', va='top', fontsize=8, fontweight='bold')
+    else:
+        ax1.text(1.5, ax1.get_ylim()[1] * 0.95, 'p>0.01', ha='center', va='top', fontsize=8, fontweight='bold')
 
     # Plot recovery
     parts2 = ax2.violinplot(taced_data, showmeans=False, showmedians=False, showextrema=False)
@@ -157,4 +165,3 @@ for sd_name in sd_names:
     plt.tight_layout()
     plt.savefig(os.path.join(current_dir, '4_Figures', 'recovery_resistance_TAC_modis_'+sd_name+'.png'), dpi=900)
     plt.show()
-

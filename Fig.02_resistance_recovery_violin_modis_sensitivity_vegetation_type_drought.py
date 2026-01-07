@@ -41,7 +41,6 @@ for name in filenames:
 
 IDs = np.sort(IDs)
 
-recovery_stats = []  # List to store recovery statistics
 IDs_num = []
 sd_names = ['tree','grass','drought']
 for sd_name in sd_names:
@@ -54,12 +53,15 @@ for sd_name in sd_names:
     df_tac0 = pd.DataFrame(TACs_mean)
     df_tac0.columns = ['urban_core', 'urban_edge', 'rural_bgr']
     df_tac0['ID'] = ID
+    recovery_stats = []  # List to store recovery statistics
     for id in IDs[2:]:
         # if id in[539.0,606.0]: continue
+        try:
+            dt_vi = np.load(current_dir + '/2_Output/Modis_recovery_resistance/dVI_' + str(id) + '_smith_2sd_'+sd_name+'.npy')
+            urban_lab = np.load(urban_folder + 'urban_label_' + str(id) + '_' + sd_name + '.npy')
 
-        dt_vi = np.load(current_dir + '/2_Output/Modis_recovery_resistance/dVI_' + str(id) + '_smith_2sd_'+sd_name+'.npy')
-
-        urban_lab = np.load(urban_folder + 'urban_label_' + str(id) + '_.npy')
+        except FileNotFoundError:
+            continue
 
         dt_vi_inner = abs(np.nanmean(dt_vi[urban_lab == 2], axis=0))
         dt_vi_sub = abs(np.nanmean(dt_vi[urban_lab == 1], axis=0))
@@ -103,7 +105,11 @@ for sd_name in sd_names:
     ax1.set_ylabel('Resistance (kNDVI loss)')
     ax1.set_ylim(resistance_data[1].min()-0.002, resistance_data[-1].max() * 1.15)
     # Add labels on top of each violin bar
-    ax1.text(1.5, ax1.get_ylim()[1] * 0.95, 'p>0.05', ha='center', va='top', fontsize=8, fontweight='bold')
+    import scipy.stats as st
+    if st.ttest_rel(df_tac['dt_vi_inner'], df_tac['dt_vi_rural']).pvalue > 0.05:
+        ax1.text(1.5, ax1.get_ylim()[1] * 0.95, 'p>0.05', ha='center', va='top', fontsize=8, fontweight='bold')
+    else:
+        ax1.text(1.5, ax1.get_ylim()[1] * 0.95, 'p>0.01', ha='center', va='top', fontsize=8, fontweight='bold')
 
     # Plot recovery
     parts2 = ax2.violinplot(taced_data, showmeans=False, showmedians=False, showextrema=False)
@@ -148,9 +154,9 @@ for sd_name in sd_names:
     ax3.set_ylabel('Density')
     ax3.set_xlabel('Normalized urban-rural differences')
 
-    sum((norm_diff_tac<0.1) & (norm_diff_dt_vi<0.1))
+    sum((norm_diff_tac<-0.) & (norm_diff_dt_vi<-0.))
     df_tac['tradeoff'] = ((norm_diff_tac<-0.1) & (norm_diff_dt_vi<-0.1)).astype(int)
-    # 237/665
+    # 259/650
 
     # x_fit10 = np.array([dt_vi_uc.min(), dt_vi_uc.max()])
     x_fit10 = x_fit12 = np.array([dt_vi_rb.min(), dt_vi_rb.max()])

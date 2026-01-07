@@ -119,8 +119,8 @@ if __name__ == '__main__':
         crop_frc[crop_frc > 0.2] = np.nan
         veg_nature = grass_frc + tree_frc
         crop_frc[crop_frc > veg_nature] = np.nan
-        crop_frc[tree_frc < grass_frc] = np.nan
-        crop_frc[tree_frc < 0.3] = np.nan
+        crop_frc[grass_frc < tree_frc] = np.nan
+        crop_frc[grass_frc < 0.3] = np.nan
         mask_miss = np.sum(np.isnan(EVI0), axis=2) / EVI0.shape[2]
         mask = np.isnan(crop_frc) | (mask_miss > 0.3) | (water_frc > 0.3) | (urbanExp_frc > 0.2)
         crop_mask_1d = mask.flatten()
@@ -189,7 +189,7 @@ if __name__ == '__main__':
             extreme_events_out_month = np.repeat(extreme_events_out,12,axis=1)
 
             # Save
-            suffix = f"{id}_smith_{n_sd}sd_tree.npy"
+            suffix = f"{id}_smith_{n_sd}sd_grass.npy"
 
             np.save(f"{output_folder}dVI_{suffix}", dVI_out)
             np.save(f"{output_folder}extreme_events_{suffix}", extreme_events_out_month)
@@ -198,27 +198,26 @@ if __name__ == '__main__':
                 f"  {id} -> n={n_sd}SD: {np.sum(~np.isnan(dVI_out))} pixels affected. Avg events/pixel: {avg_events:.4f}")
 
 
-            # urban_2018 = tf.imread(urban_folder_2018 + 'fvc_' + str(id) + '.tif').astype(float)
-            # urban_2018_rsz = cv2.resize(urban_2018, (EVI0.shape[1], EVI0.shape[0]),cv2.INTER_NEAREST)
-            # urban_2018_rsz[urban_2018_rsz != float(id)] = np.nan
-            # urban_1990 = tf.imread(urban_folder_1990 + 'urban_1990_' + str(id) + '.tif').astype(float)
-            # urban_1990= cv2.resize(urban_1990, (EVI0.shape[1], EVI0.shape[0]),cv2.INTER_NEAREST)
-            # urban_1990[urban_1990 == 0] = np.nan
-            #
-            # rural_near = urban_2018_rsz * 1  # rural-urban interface
-            # for i in range(3*2):
-            #     rural_near = extend_edge(rural_near)
-            #
-            # rural_bgr = rural_near * 1  # rural background
-            # for i in range(10*2):
-            #     rural_bgr = extend_edge(rural_bgr)
-            #
-            # urban_label = urban_1990+np.nan
-            # urban_label[~np.isnan(rural_bgr)]=0
-            # urban_label[~np.isnan(rural_near)] = 1
-            # urban_label[~np.isnan(urban_1990)] = 2
-            # urban_label2 = urban_label[~mask]
-            # output_file_urbanlabel = current_dir + '/2_Output/Modis_recovery_resistance/' + 'urban_label_' + str(
-            #     id) + '_.npy'
-            #
-            # np.save(output_file_urbanlabel, urban_label2)
+            urban_2018 = tf.imread(urban_folder_2018 + 'fvc_' + str(id) + '.tif').astype(float)
+            urban_2018_rsz = cv2.resize(urban_2018, (EVI0.shape[1], EVI0.shape[0]),cv2.INTER_NEAREST)
+            urban_2018_rsz[urban_2018_rsz != float(id)] = np.nan
+            urban_1990 = tf.imread(urban_folder_1990 + 'urban_1990_' + str(id) + '.tif').astype(float)
+            urban_1990= cv2.resize(urban_1990, (EVI0.shape[1], EVI0.shape[0]),cv2.INTER_NEAREST)
+            urban_1990[urban_1990 == 0] = np.nan
+
+            rural_near = urban_2018_rsz * 1  # rural-urban interface
+            for i in range(3*2):
+                rural_near = extend_edge(rural_near)
+
+            rural_bgr = rural_near * 1  # rural background
+            for i in range(10*2):
+                rural_bgr = extend_edge(rural_bgr)
+
+            urban_label = urban_1990+np.nan
+            urban_label[~np.isnan(rural_bgr)]=0
+            urban_label[~np.isnan(rural_near)] = 1
+            urban_label[~np.isnan(urban_1990)] = 2
+            urban_label2 = urban_label[~mask]
+            output_file_urbanlabel = current_dir + '/2_Output/Modis_recovery_resistance/' + 'urban_label_' + str(id) + '_grass.npy'
+
+            np.save(output_file_urbanlabel, urban_label2)

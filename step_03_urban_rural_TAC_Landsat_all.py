@@ -1,15 +1,13 @@
 import numpy as np
 import pandas as pd
-import tifffile as tf
-import matplotlib.pyplot as plt
-# import matplotlib;
-# matplotlib.use('Qt5Agg')
 import warnings
 warnings.filterwarnings("ignore")
 from scipy.ndimage import convolve1d
 import os
 import multiprocess as mp
-
+import matplotlib;
+matplotlib.use('Qt5Agg')
+import matplotlib.pyplot as plt
 def fill_nan_with_climatology(EVI, bands_year=12):
     num_years = EVI.shape[1] // bands_year
     climatology = np.zeros((EVI.shape[0], EVI.shape[1]))
@@ -36,7 +34,6 @@ def fill_nan_with_climatology(EVI, bands_year=12):
 def ar1_series_5yr(array):
     import numpy.ma as ma
     return ma.corrcoef(ma.masked_invalid(array[:-1]), ma.masked_invalid(array[1:]))[0, 1]
-
 
 if __name__ == '__main__':
     current_dir = os.path.dirname(os.getcwd()).replace('\\', '/')
@@ -68,6 +65,9 @@ if __name__ == '__main__':
         bands_year = 12
         vis = fill_nan_with_climatology(vis)
         vis = fill_nan_with_climatology(vis)
+
+        vis_mean = np.nanmean(vis,axis=1)
+        # plt.figure(); plt.hist(vis_mean,50)
 
         # remove long-term treng
         ser = vis*1

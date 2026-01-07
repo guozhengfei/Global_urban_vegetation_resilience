@@ -18,7 +18,7 @@ import os
 t = np.linspace(0, 140, 140)
 
 # Function to create the disturbance and recovery pattern
-def create_pattern(min_val, recovery_rate, noise_level=0.08):
+def create_pattern(min_val, recovery_rate, noise_level=0.06):
     # Initial fluctuation
     y = np.random.normal(0, noise_level, len(t))
     
@@ -40,7 +40,7 @@ def create_pattern(min_val, recovery_rate, noise_level=0.08):
 # Create three patterns
 # pattern1 = create_pattern(min_val=-0.5, recovery_rate=0.15)*0.1  # Quick recovery
 # pattern2 = create_pattern(min_val=-1.0, recovery_rate=0.13)*0.1  # Medium recovery
-pattern3 = create_pattern(min_val=-1.5, recovery_rate=0.10)*0.1  # Slow recovery
+pattern3 = create_pattern(min_val=-1.0, recovery_rate=0.20)*0.1  # Slow recovery
 
 # Create figure
 plt.figure(figsize=(11 * 0.72, 3.5))
@@ -48,12 +48,12 @@ plt.figure(figsize=(11 * 0.72, 3.5))
 # Plot patterns
 # plt.plot(t, pattern1, label='High resilience', color='#2166ac', linewidth=2)
 # plt.plot(t, pattern2, label='Midum resilience', color='#67a9cf', linewidth=2)
-plt.plot(t[::4]/4, pattern3[::4]*1.5, label='Low resilience', color='#b2182b', linewidth=2)
+plt.plot((t[::6]/6)[2:25], (pattern3[::6]*1.5)[2:25]+0.35, label='Low resilience', color='#b2182b', linewidth=2)
 
 # Customize plot
-plt.ylim(-0.24, 0.04)
-plt.xlabel('Month')
-plt.ylabel('Residual kNDVI')
+# plt.ylim(-0.24, 0.04)
+plt.xlabel('Year')
+plt.ylabel('Detrend growing-season kNDVI')
 
 # Adjust layout and save
 plt.tight_layout()

@@ -89,7 +89,6 @@ if __name__ == '__main__':
         # Calculate Residuals (Anomaly - Trend)
         residuals = deseasonalized - rolling_trend.values.T
 
-
         # Apply GS Mask
         residuals[:, ~gs_mask] = 0
         residuals[np.isnan(residuals)] = 0
@@ -168,7 +167,7 @@ if __name__ == '__main__':
                     rec_list.append(get_slope(rec_slice))
 
                     # dT (max to Min)
-                    dVI_slice = pixel_data[min_idx_global] - pixel_data[start]
+                    dVI_slice = (pixel_data[min_idx_global] - pixel_data[start])/np.nanmean(pixel_data)
                     dVI_list.append(dVI_slice)
 
                 if res_list: resistance_out[i] = np.nanmean(res_list)

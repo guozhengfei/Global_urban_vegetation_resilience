@@ -48,7 +48,7 @@ if __name__ == '__main__':
     # Detrending Parameter:
     # Window size for rolling mean. 24 time steps = 2 years (assuming monthly/12 bands).
     # This removes low-frequency trends to isolate short-term extremes.
-    ROLLING_WINDOW = 12*7
+    ROLLING_WINDOW = 7
 
     BOUNDARY_SD = 0.5  # Start/End definition
     CORE_SD_LEVELS = [1, 1.5, 2, 2.5]  # Disturbance intensity levels
@@ -69,17 +69,15 @@ if __name__ == '__main__':
         vis_monthly = vis.reshape(vis.shape[0], YR_NUM, BANDS_YEAR)
         vi_seasonal = np.nanmedian(np.nanmedian(vis_monthly, axis=1), axis=0)
         vi_threshold = min(np.nanpercentile(vi_seasonal, 20), 0.2)
-        gs_mask = np.tile(vi_seasonal > vi_threshold, YR_NUM)
+        gs_mask = vi_seasonal > vi_threshold
+        vis_monthly[:,:,~gs_mask]=np.nan
+        vis_yearly = np.nanmean(vis_monthly,axis=2)
 
-        # --- De-seasonalize ---
-        seasonal_mean = np.mean(vis_monthly, axis=1)
-        seasonal_mean_tiled = np.tile(seasonal_mean, (1, YR_NUM))
-        deseasonalized = vis - seasonal_mean_tiled
 
         # --- De-trend (Rolling Mean) ---
         # Convert to DataFrame to leverage optimized rolling function
         # Transpose to (Time, Pixels) because rolling works on index
-        df_deseas = pd.DataFrame(deseasonalized.T)
+        df_deseas = pd.DataFrame(vis_yearly.T)
 
         # Calculate Rolling Mean (Trend)
         # center=True ensures the trend is aligned with the event
@@ -87,19 +85,12 @@ if __name__ == '__main__':
         rolling_trend = df_deseas.rolling(window=ROLLING_WINDOW, center=True, min_periods=1).mean()
 
         # Calculate Residuals (Anomaly - Trend)
-        residuals = deseasonalized - rolling_trend.values.T
-
-        # Apply GS Mask
-        residuals[:, ~gs_mask] = 0
-        residuals[np.isnan(residuals)] = 0
-
-        # --- Smoothing ---
-        gsm_residuals = ss.savgol_filter(residuals, 18, 1, mode='nearest', axis=1)
-        gsm_residuals = ss.savgol_filter(gsm_residuals, 7, 1, mode='nearest', axis=1)
+        residuals = vis_yearly - rolling_trend.values.T
 
         # Add Static Mean back to standardize the baseline for thresholding
         vis_mean_pixel = np.nanmean(vis, axis=1, keepdims=True)
-        gsm_arr = gsm_residuals + vis_mean_pixel
+        vis_mean_pixel = np.tile(vis_mean_pixel,YR_NUM)
+        gsm_arr = residuals
 
         # --- Statistics ---
         mean_all = np.nanmean(gsm_arr, axis=1)
@@ -108,81 +99,31 @@ if __name__ == '__main__':
 
         # --- Loop through n = 1, 2, 3 ---
         for n_sd in CORE_SD_LEVELS:
-
             # Define Thresholds
-            boundary_thresholds = mean_all - (BOUNDARY_SD * std_all)
             core_thresholds = mean_all - (n_sd * std_all)
+            core_thresholds_2d = np.tile(core_thresholds, (YR_NUM, 1)).T
 
-            # Create boundary mask
-            boundary_mask = gsm_arr <= boundary_thresholds[:, np.newaxis]
 
             # Output Arrays
-            resistance_out = np.full(n_pixels, np.nan)
-            resilience_out = np.full(n_pixels, np.nan)
-            dVI_out = np.full(n_pixels, np.nan)
+            # Output Arrays
+            dVI_out = gsm_arr + np.nan
             extreme_events_out = np.zeros((n_pixels, n_times), dtype=bool)
 
-            total_events = 0
-
-            for i in range(n_pixels):
-                pixel_bool = boundary_mask[i, :]
-                if not np.any(pixel_bool): continue
-
-                # Find contiguous periods
-                padded = np.concatenate(([False], pixel_bool, [False]))
-                diffs = np.diff(padded.astype(int))
-                starts = np.where(diffs == 1)[0]
-                ends = np.where(diffs == -1)[0] - 1  # inclusive
-
-                res_list = []
-                rec_list = []
-                dVI_list =[]
-
-                for start, end in zip(starts, ends):
-                    duration = end - start + 1
-                    if duration < 4: continue
-
-                    pixel_data = gsm_arr[i, :]
-                    event_segment = pixel_data[start: end + 1]
-
-                    # --- CRITICAL CHECK: Depth > n SD ---
-                    min_val = np.min(event_segment)
-                    if min_val > core_thresholds[i]:
-                        continue
-
-                        # Valid Event
-                    total_events += 1
-                    extreme_events_out[i, start: end + 1] = True
-
-                    # Calculate Metrics
-                    min_idx_local = np.argmin(event_segment)
-                    min_idx_global = start + min_idx_local
-
-                    # Resistance (Slope to Min)
-                    resist_slice = pixel_data[start: min_idx_global + 1]
-                    res_list.append(get_slope(resist_slice))
-
-                    # Resilience (Slope from Min)
-                    rec_slice = pixel_data[min_idx_global: end + 1]
-                    rec_list.append(get_slope(rec_slice))
-
-                    # dT (max to Min)
-                    dVI_slice = pixel_data[min_idx_global] - pixel_data[start]
-                    dVI_list.append(dVI_slice)
-
-                if res_list: resistance_out[i] = np.nanmean(res_list)
-                if rec_list: resilience_out[i] = np.nanmean(rec_list)
-                if dVI_list: dVI_out[i] = np.nanmean(dVI_list)
+            disturbance_label = residuals < core_thresholds_2d
+            dVI_out[disturbance_label] = residuals[disturbance_label] / vis_mean_pixel[disturbance_label]
+            dVI_out = np.nanmin(dVI_out, axis=1)
 
             # Calculate average events
+            total_events = np.sum(disturbance_label)
             avg_events = total_events / n_pixels
+            extreme_events_out[disturbance_label] = True
+            extreme_events_out_month = np.repeat(extreme_events_out, 12, axis=1)
 
             # Save
             suffix = f"{id_val}_smith_{n_sd}sd.npy"
-            np.save(f"{output_folder}resistance_{suffix}", resistance_out)
-            np.save(f"{output_folder}resilience_{suffix}", resilience_out)
+
             np.save(f"{output_folder}dVI_{suffix}", dVI_out)
             np.save(f"{output_folder}extreme_events_{suffix}", extreme_events_out)
 
             print(
-                f"  -> n={n_sd}SD: {np.sum(~np.isnan(resistance_out))} pixels affected. Avg events/pixel: {avg_events:.4f}")
+                f" Landsat {id} -> n={n_sd}SD: {np.sum(~np.isnan(dVI_out))} pixels affected. Avg events/pixel: {avg_events:.4f}")

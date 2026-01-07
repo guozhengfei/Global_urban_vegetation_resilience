@@ -181,8 +181,13 @@ if __name__ == '__main__':
             crop_frc[crop_frc > 0.2] = np.nan
             veg_nature = grass_frc + tree_frc
             crop_frc[crop_frc > veg_nature] = np.nan
-            crop_frc[tree_frc < grass_frc] = np.nan
-            crop_frc[tree_frc < 0.3] = np.nan
+            if str_name =='tree':
+                crop_frc[tree_frc < grass_frc] = np.nan
+                crop_frc[tree_frc < 0.3] = np.nan
+            elif str_name=='grass':
+                crop_frc[grass_frc < tree_frc] = np.nan
+                crop_frc[grass_frc < 0.3] = np.nan
+
             mask_miss = np.sum(np.isnan(EVI0), axis=2) / EVI0.shape[2]
             mask = np.isnan(crop_frc) | (mask_miss > 0.3) | (water_frc > 0.3) | (urbanExp_frc > 0.2)
             # plt.figure(); plt.imshow(mask)
