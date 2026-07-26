@@ -1,7 +1,8 @@
 import geopandas as gpd
 import pandas as pd
+import matplotlib; matplotlib.use('Qt5Agg')
+
 from matplotlib import pyplot as plt
-# import matplotlib; matplotlib.use('Qt5Agg')
 import os
 import numpy as np
 import seaborn as sns

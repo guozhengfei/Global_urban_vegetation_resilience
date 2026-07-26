@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 import tifffile as tf
-#import matplotlib; matplotlib.use('Qt5Agg')
+import matplotlib; matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 plt.rc('font', family='Arial')
 plt.rc('lines', linewidth=1.05)  # Increase default line width

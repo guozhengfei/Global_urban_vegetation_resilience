@@ -14,7 +14,7 @@ import os
 import numpy as np
 import scipy.stats as st
 import pymannkendall as mk
-mk.hamed_rao_modification_test()
+# mk.hamed_rao_modification_test()
 
 current_dir = os.path.dirname(os.getcwd()).replace('\\','/')
 TACs = np.load(current_dir+'/2_Output/tac_landsat_city_3zones.npz')['array1']

@@ -28,7 +28,6 @@ def remove_outliers(df, columns):
 
 current_dir = os.path.dirname(os.getcwd()).replace('\\', '/')
 urban_folder = current_dir + '/2_Output/Modis_recovery_resistance/'
-folder = current_dir + '/2_Output/VI_Landsat/'
 filenames = os.listdir(urban_folder)
 
 # load Landsat TAC
@@ -56,7 +55,7 @@ for sd_name in sd_names:
     for id in IDs[2:]:
         # if id in[539.0,606.0]: continue
 
-        dt_vi = np.load(current_dir + '/2_Output/Modis_recovery_resistance/dVI_' + str(id) + '_smith_' + sd_name + 'sd.npy')
+        dt_vi = np.load(current_dir + '/2_Output/Modis_recovery_resistance/dVI_metric3_' + str(id) + '_smith_' + sd_name + 'sd.npy')
 
         urban_lab = np.load(urban_folder + 'urban_label_' + str(id) + '_.npy')
 
@@ -156,6 +155,7 @@ ax3.set_ylabel('Density')
 ax3.set_xlabel('Normalized urban-rural differences')
 
 print(sum((norm_diff_tac<-0.0) & (norm_diff_dt_vi<-0.0))/len(norm_diff_tac))
+
 df_tac['tradeoff'] = ((norm_diff_tac<-0.1) & (norm_diff_dt_vi<-0.1)).astype(int)
 # 237/665
 
@@ -228,6 +228,7 @@ x_fit10 = np.array([df_tac['irri_diff'].min(), df_tac['irri_diff'].max()])
 
 slope20, intercept20, r_value20, p_value20, std_err20 = st.linregress(df_tac['irri_diff'].values[~mask2],(df_tac['urban_core']-df_tac['rural_bgr']).values[~mask2])
 slope22, intercept22, r_value22, p_value22, std_err22 = st.linregress(df_tac['irri_diff'].values[~mask2],(df_tac['dt_vi_inner']-df_tac['dt_vi_rural']).values[~mask2])
+print(r_value20, r_value22)
 
 
 ax[1].plot(x_fit10, slope20 * x_fit10 + intercept20, colors[1], linewidth=1.5)
@@ -235,10 +236,10 @@ ax2.plot(x_fit10, slope22 * x_fit10 + intercept22, colors[0], linewidth=1.5)
 ax[1].tick_params(axis='y', colors=colors[1])
 ax2.tick_params(axis='y', colors=colors[0])
 
-ax[1].set_xlabel('Urban irrigation proxy (mm/year)')
+ax[1].set_xlabel('Urban irrigation (mm/year)')
 ax[1].set_ylabel('ΔTAC$_{ED}$',c=colors[1])
 ax2.set_ylabel('ΔkNDVI loss',c=colors[0])
 ax[1].set_xlim([-500,500])
 fig.tight_layout()
-plt.savefig(os.path.join(current_dir, '4_Figures', 'recovery_resistance_TAC_modis_d_e.png'), dpi=900)
+plt.savefig(os.path.join(current_dir, '4_Figures', 'recovery_resistance_TAC_modis_d_e_metric3.png'), dpi=900)
 plt.show()

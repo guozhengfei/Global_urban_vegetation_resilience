@@ -32,7 +32,7 @@ folder = current_dir + '/2_Output/VI_Landsat/'
 filenames = os.listdir(urban_folder)
 
 # load Landsat TAC
-relative_path = '/2_Output/tac_nadir_city_3zones_modis_no_disturbance.npz'
+relative_path = '/2_Output/tac_nadir_city_3zones_modis_no_disturbance_no_climate_adjust.npz'
 TACs = np.load(current_dir+relative_path)['array1'] # v5,v4.2
 TACs[TACs<0]=np.nan
 TACs_mean = TACs
@@ -228,17 +228,17 @@ x_fit10 = np.array([df_tac['irri_diff'].min(), df_tac['irri_diff'].max()])
 
 slope20, intercept20, r_value20, p_value20, std_err20 = st.linregress(df_tac['irri_diff'].values[~mask2],(df_tac['urban_core']-df_tac['rural_bgr']).values[~mask2])
 slope22, intercept22, r_value22, p_value22, std_err22 = st.linregress(df_tac['irri_diff'].values[~mask2],(df_tac['dt_vi_inner']-df_tac['dt_vi_rural']).values[~mask2])
-
+print(r_value20,r_value22)
 
 ax[1].plot(x_fit10, slope20 * x_fit10 + intercept20, colors[1], linewidth=1.5)
 ax2.plot(x_fit10, slope22 * x_fit10 + intercept22, colors[0], linewidth=1.5)
 ax[1].tick_params(axis='y', colors=colors[1])
 ax2.tick_params(axis='y', colors=colors[0])
 
-ax[1].set_xlabel('Urban irrigation proxy (mm/year)')
+ax[1].set_xlabel('Urban irrigation (mm/year)')
 ax[1].set_ylabel('ΔTAC$_{ED}$',c=colors[1])
 ax2.set_ylabel('ΔkNDVI loss',c=colors[0])
 ax[1].set_xlim([-500,500])
 fig.tight_layout()
-plt.savefig(os.path.join(current_dir, '4_Figures', 'recovery_resistance_TAC_modis_d_e.png'), dpi=900)
+plt.savefig(os.path.join(current_dir, '4_Figures', 'recovery_resistance_TAC_modis_d_e_no_climate_adjust.png'), dpi=900)
 plt.show()

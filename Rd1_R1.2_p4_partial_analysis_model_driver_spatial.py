@@ -47,12 +47,13 @@ def load_data():
     climate = pd.read_csv(current_dir + '/2_Output/urban_koppen_climate.csv')
     AI = pd.read_csv(current_dir + '/2_Output/AI_csv.csv')
     ch = pd.read_csv(current_dir + '/2_Output/drivers/canopy_height.csv')
+    et_diff = pd.read_csv(current_dir + '/2_Output/pure_veg/monthly_landsat_et_PM_global_urban_rural_diff_by_vegtype_100.csv')
     
     # Process climate data
     climate['MAT'] = climate['MAT'] - 273.15
     climate['MAP'] = climate['MAP'] * 24 * 1000
     
-    return urban_factors, co2, vpd, ntl_vegc_ndvi, pop, shann, climate, AI, ch
+    return urban_factors, co2, vpd, ntl_vegc_ndvi, pop, shann, climate, AI, ch, et_diff
 
 def calculate_partial_correlations(df_xgb, target_col):
     """Calculate partial correlations and p-values for normalized variables"""
@@ -114,8 +115,8 @@ def plot_partial_correlations(axs, correlations_list, p_values_list, titles):
                       ha='right')
 
 current_dir = os.path.dirname(os.getcwd()).replace('\\','/')
-relative_path2 = '/2_Output/tac_nadir_city_3zones.npz'
-relative_path = '/2_Output/tac_landsat_city_3zones.npz'
+relative_path = '/2_Output/tac_nadir_city_3zones.npz'
+relative_path2 = '/2_Output/tac_landsat_city_3zones.npz'
 
 TACs = np.load(current_dir+relative_path2)['array1'] # LANDSAT
 ID = np.load(current_dir+relative_path2)['array2'] # MODIS
@@ -129,7 +130,7 @@ df_tac['ID'] = ID
 df_tac = df_tac[df_tac['ID'].isin(ID2)]
 
 # Load all data
-urban_factors, co2, vpd, ntl_vegc_ndvi, pop, shann, climate, AI, ch = load_data()
+urban_factors, co2, vpd, ntl_vegc_ndvi, pop, shann, climate, AI, ch, et_diff = load_data()
 
 df_tac = pd.merge(df_tac, AI, on='ID')
 df_tac = pd.merge(df_tac, ch, on='ID')
@@ -140,6 +141,8 @@ df_tac = pd.merge(df_tac, vpd, on='ID')
 df_tac = pd.merge(df_tac, ntl_vegc_ndvi,on='ID')
 df_tac = pd.merge(df_tac, pop,on='ID')
 df_tac = pd.merge(df_tac, shann,on='ID')
+df_tac = pd.merge(df_tac, et_diff[['id', 'grass_dominant_urban_rural_et_diff']], left_on='ID', right_on='id')
+df_tac = df_tac.drop(columns=['id'])
 
 df_tac['ntl_diff'] = df_tac['ntl_core_all'] - df_tac['ntl_bg_all']
 df_tac['pop_diff'] = df_tac['pop_core_all'] - df_tac['pop_bg_all']
@@ -152,7 +155,8 @@ df_tac['co2_diff'] = df_tac['Urban_Core_CO2'] - df_tac['Urban_Outedge_CO2']+0.5
 
 df_tac['LE_core'] = df_tac['Rn_core'] + df_tac['Q_core'] - df_tac['H_core'] - df_tac['Rn_core'] * 0.25
 df_tac['LE_bg'] = df_tac['Rn_bg'] + df_tac['Q_bg'] - df_tac['H_bg'] - df_tac['Rn_bg'] * 0.25
-df_tac['urban_irri'] = df_tac['LE_core']-df_tac['LE_bg']
+df_tac['urban_irri'] = df_tac['grass_dominant_urban_rural_et_diff'] # df_tac['LE_core']-df_tac['LE_bg']#
+
 df_tac['Q_diff'] = df_tac['Q_core'] - df_tac['Q_bg']
 df_tac['delta_Tc'] = df_tac['Tc_core'] - df_tac['Tc_bg']
 # climate: Ta, Pr, Rad, VPD
@@ -162,8 +166,6 @@ fig, axs = plt.subplots(1, 1, figsize=(5.5*0.8, 3.5 * 0.72*0.8),sharex=True)
 # Prepare datasets for analysis
 variable_sets = [
     ['SW', 'AI', 'urban_irri', 'ntl_diff', 'pop_diff', 'uhi', 'co2_diff',  'ch_diff', 'shann_diff','tac_diff'],
-    #['SW', 'AI', 'LE_core', 'ntl_core_all', 'pop_core_all', 'Tc_core', 'co2_diff', 'ch_core', 'urban_core'],
-    #['SW', 'AI', 'LE_bg', 'ntl_bg_all', 'pop_bg_all', 'Tc_bg', 'co2_diff',  'ch_bg', 'rural_bgr']
 ]
 
 target_cols = ['tac_diff', 'urban_core', 'rural_bgr']
@@ -187,8 +189,7 @@ plot_partial_correlations(axs, correlations_list, p_values_list, titles)
 plt.ylim([-0.36,0.32])
 plt.xticks(range(9),['SW', 'AI', 'UI', 'ΔGDP', 'ΔPOP', 'UHI', 'ΔCO2',  'ΔHc', 'ΔHet'], ha='right')
 plt.tight_layout()
-plt.savefig(os.path.join('..', '4_Figures', 'partial_correlation_bars_modis.png'),
-            dpi=600, bbox_inches='tight')
+
 # plt.show()
 
 
@@ -271,6 +272,4 @@ for i in range(4):
     cbar.update_ticks()
     
 plt.tight_layout()
-plt.savefig(os.path.join('..', '4_Figures', 'scatter_modis.png'),
-            dpi=900, bbox_inches='tight')
 plt.show()

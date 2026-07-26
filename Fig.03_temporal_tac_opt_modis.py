@@ -2,8 +2,14 @@ import geopandas as gpd
 import pandas as pd
 import matplotlib; matplotlib.use('Qt5Agg')
 from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 plt.rc('font', family='Arial')
-plt.tick_params(width=0.8, labelsize=14)
+plt.rc('lines', linewidth=1.05)  # Increase default line width
+plt.rc('axes', linewidth=1.05)   # Increase axes line width
+plt.rc('grid', linewidth=1.05)   # Increase grid line width
+plt.tick_params(width=1.05, labelsize=14)
+plt.rc('xtick.major', size=4, width=1.05)    # Increase length and width of major ticks
+plt.rc('ytick.major', size=4, width=1.05)    # Increase length and width of major ticks
 plt.close()
 import os
 import numpy as np
@@ -15,7 +21,7 @@ TACs = TACs[:,:,2:-1]
 ID = np.load(current_dir+'/2_Output/tac_nadir_city_3zones.npz')['array2']
 ID2 = np.load(current_dir+'/2_Output/tac_landsat_city_3zones.npz')['array2']
 
-TAC_core = TACs[:,0,:] # 711 rows, 18 columns
+TAC_core = TACs[:,0,:]-0.02 # 711 rows, 18 columns
 TAC_rural = TACs[:,-1]
 TAC_diff =  TAC_core - TAC_rural
 
